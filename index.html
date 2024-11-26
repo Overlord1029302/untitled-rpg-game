@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>untitled rpg game</title>
+    <title>Quest for the Lost Treasure</title>
     <style>
         body {
             font-family: 'Arial', sans-serif;
@@ -57,9 +57,6 @@
         button:hover {
             background-color: #d95d50;
         }
-        .alert {
-            color: yellow;
-        }
         #storyline {
             margin-bottom: 20px;
             font-size: 1.1em;
@@ -75,30 +72,20 @@
             text-align: left;
         }
         .rainbow {
-            animation: rainbow 2s infinite;
-        }
-        @keyframes rainbow {
-            0% { background-color: red; }
-            14% { background-color: orange; }
-            28% { background-color: yellow; }
-            42% { background-color: green; }
-            57% { background-color: blue; }
-            71% { background-color: indigo; }
-            85% { background-color: violet; }
-            100% { background-color: red; }
-        }
+    background: linear-gradient(90deg, red, orange, yellow, green, blue, indigo, violet);
+    background-clip: text;
+    -webkit-background-clip: text; /* For Safari */
+    color: transparent;
+}
     </style>
 </head>
 <body>
 
 <div id="game">
-    <h1>untitled rpg game</h1>
+    <h1>Quest for the Lost Treasure</h1>
     
     <div id="storyline">
-        <p>
-            Welcome, brave adventurer! You are on a quest to find the legendary Lost Treasure hidden deep within the enchanted forest. 
-            Defeat monsters, heal your wounds, and spend your hard-earned coins wisely on items that might help you in your journey!
-        </p>
+        <p>Welcome, brave adventurer! You are on a quest to find the legendary Lost Treasure hidden deep within the enchanted forest. Defeat monsters, heal your wounds, and spend your hard-earned coins wisely on items that might help you in your journey!</p>
     </div>
     
     <div id="stats">
@@ -146,36 +133,61 @@
         { name: "Health Potion", cost: 15, healAmount: 25 },
         { name: "Strength Elixir", cost: 20, attackIncrease: 5 },
         { name: "Magic Shield", cost: 30, defenseDuration: 1 },
-        { name: "Fireball Spell", cost: 50, spellDamage: 40 },
-        { name: "Ice Blast Spell", cost: 75, spellDamage: 60 }
+        { name: "Fireball Spell", cost: 50, spellBaseDamage: 20 },
+        { name: "Ice Blast Spell", cost: 75, spellBaseDamage: 20 }
     ];
 
-    const enemies = [
-        { name: "Goblin", health: 20, baseAttack: 10, level: 1 },
-        { name: "Orc", health: 40, baseAttack: 15, level: 2 },
-        { name: "Dragon", health: 100, baseAttack: 25, level: 3 }
+    const normalEnemies = [
+        { name: "Goblin", baseHealth: 20, baseAttack: 10 },
+        { name: "Orc", baseHealth: 40, baseAttack: 15 },
+        { name: "Dragon", baseHealth: 100, baseAttack: 25 }
+    ];
+
+    const bosses = [
+        { name: "Dark Sorcerer", baseHealth: 250, attack: 35 },
+        { name: "Giant Beast", baseHealth: 500, attack: 50 },
+        { name: "Eternal Warlord", baseHealth: 750, attack: 60 }
     ];
 
     function startNewBattle() {
-        currentEnemy = getRandomEnemy();
+        currentEnemy = isBossLevel() ? getBoss() : getRandomEnemy();
         document.getElementById("message").innerText = `A wild ${currentEnemy.name} appears! Prepare to fight!`;
         updateStats();
     }
 
+    function isBossLevel() {
+        return level % 10 === 0;
+    }
+
+    function getBoss() {
+        const bossIndex = (level / 10) - 1;
+        return { name: bosses[bossIndex].name, health: bosses[bossIndex].baseHealth + (level * 50), attack: bosses[bossIndex].attack };
+    }
+
+    function getRandomEnemy() {
+        const randomIndex = Math.floor(Math.random() * normalEnemies.length);
+        const enemy = { ...normalEnemies[randomIndex] };
+        enemy.health = enemy.baseHealth + (level * 10);
+        return enemy;
+    }
+
     function calculateAttackStrength() {
-        return baseAttackStrength + (level * 2);
+        return Math.floor(Math.random() * 20) + 1 + (level * 2);
+    }
+
+    function calculateSpellDamage() {
+        return 20 + (level * 2); // Starts from 20 and scales with level
     }
 
     function attackMonster() {
         if (health > 0 && currentEnemy !== null) {
-            const damageDealt = Math.floor(Math.random() * calculateAttackStrength()) + 5;
+            const damageDealt = calculateAttackStrength();
             currentEnemy.health -= damageDealt;
             document.getElementById("message").innerText = `You dealt ${damageDealt} damage to the ${currentEnemy.name}. It has ${currentEnemy.health} health left.`;
-
             if (currentEnemy.health <= 0) {
                 currency += 10;
-                experience += 50;
-                document.getElementById("message").innerText += ` You defeated the ${currentEnemy.name}! You earned 10 coins and 50 XP!`;
+                experience += isBossLevel() ? 100 : 50;
+                document.getElementById("message").innerText += ` You defeated the ${currentEnemy.name}! You earned ${isBossLevel() ? 100 : 10} coins and ${isBossLevel() ? 100 : 50} XP!`;
                 currentEnemy = null;
                 checkLevelUp();
                 startNewBattle();
@@ -189,16 +201,11 @@
 
     function enemyAttack() {
         if (currentEnemy && health > 0) {
-            const enemyAttackStrength = currentEnemy.baseAttack + (currentEnemy.level * 2);
+            const enemyAttackStrength = currentEnemy.attack || (currentEnemy.baseAttack + (level * 2));
             health -= enemyAttackStrength;
             document.getElementById("message").innerText += ` The ${currentEnemy.name} attacks you for ${enemyAttackStrength} damage!`;
             updateStats();
         }
-    }
-
-    function getRandomEnemy() {
-        const randomIndex = Math.floor(Math.random() * enemies.length);
-        return { ...enemies[randomIndex] };
     }
 
     function heal() {
@@ -237,7 +244,6 @@
             document.getElementById("message").innerText = `You have already purchased the ${item.name}!`;
             return;
         }
-        
         if (currency >= item.cost) {
             currency -= item.cost;
             purchasedItems.add(item.name);
@@ -249,10 +255,8 @@
             } else if (item.attackIncrease) {
                 baseAttackStrength += item.attackIncrease;
                 document.getElementById("message").innerText += ` Your attack strength increased by ${item.attackIncrease}.`;
-            } else if (item.defenseDuration) {
-                document.getElementById("message").innerText += ' Magic Shield purchased.';
-            } else if (item.spellDamage) {
-                inventory.push(`${item.name} (${item.spellDamage} damage spell)`);
+            } else if (item.spellBaseDamage) {
+                inventory.push(`${item.name} (${calculateSpellDamage() + level * 2} damage spell)`);
                 document.getElementById("message").innerText += ` You added it to your inventory.`;
             }
             updateStats();
@@ -268,10 +272,10 @@
     function explore() {
         const outcome = Math.random();
         if (outcome < 0.5) {
-            document.getElementById("message").innerText = `You found a hidden stash of coins! You gained 5 coins.`;
+            document.getElementById("message").innerText = "You found a hidden stash of coins! You gained 5 coins.";
             currency += 5;
         } else {
-            document.getElementById("message").innerText = `You stumbled into a trap! You lost 10 health.`;
+            document.getElementById("message").innerText = "You stumbled into a trap! You lost 10 health.";
             health -= 10;
             if (health < 0) health = 0;
         }
@@ -282,14 +286,13 @@
         if (inventory.length > 0) {
             const spellItem = inventory.find(item => item.includes("damage spell"));
             if (spellItem) {
-                const spellDamage = parseInt(spellItem.match(/\((\d+) damage spell\)/)[1]);
+                const spellDamage = calculateSpellDamage();
                 currentEnemy.health -= spellDamage;
                 document.getElementById("message").innerText = `You cast ${spellItem.split(" ")[0]} and dealt ${spellDamage} damage! ${currentEnemy.name} has ${currentEnemy.health} health left.`;
-
                 if (currentEnemy.health <= 0) {
                     currency += 10;
-                    experience += 50;
-                    document.getElementById("message").innerText += ` You defeated the ${currentEnemy.name}! You earned 10 coins and 50 XP!`;
+                    experience += 100; // Always 100 XP for spells
+                    document.getElementById("message").innerText += ` You defeated the ${currentEnemy.name}! You earned 10 coins and 100 XP!`;
                     currentEnemy = null;
                     checkLevelUp();
                     startNewBattle();
@@ -297,46 +300,43 @@
                     enemyAttack();
                 }
             } else {
-                document.getElementById("message").innerText = `You have no spells to cast!`;
+                document.getElementById("message").innerText = "You have no spells to cast!";
             }
         } else {
-            document.getElementById("message").innerText = `Your inventory is empty!`;
+            document.getElementById("message").innerText = "Your inventory is empty!";
         }
     }
 
     function checkLevelUp() {
-        if (experience >= 100) {
-            level += 1;
-            baseAttackStrength += 5;
-            maxHealth += 10;
-            health = maxHealth;
-            experience = experience - 100;
-            document.getElementById("message").innerText += ` You leveled up to level ${level}! Your attack strength has increased and your max health is now ${maxHealth}.`;
-        }
-        if (level >= 100) {
-            document.getElementById("level").classList.add("rainbow");
-        }
-        updateStats();
+    if (experience >= 100) {
+        level += 1;
+        baseAttackStrength += 5; // Level up increases base attack strength
+        maxHealth += 10; // Increase max health with level up
+        health = maxHealth; // Restore health to max upon leveling up
+        experience = experience - 100; // Reset experience for next level
+        document.getElementById("message").innerText += ` You leveled up to level ${level}! Your attack strength has increased and your max health is now ${maxHealth}.`;
+    }
+    updateStats(); // Ensure this is called to update displayed stats including max health.
+}
+
+function updateStats() {
+    document.getElementById("health").innerText = health; // Current health
+    document.getElementById("maxHealth").innerText = maxHealth; // Display correct max health here.
+    document.getElementById("currency").innerText = currency;
+    document.getElementById("attack").innerText = calculateAttackStrength();
+    document.getElementById("experience").innerText = experience;
+    document.getElementById("level").innerText = level;
+
+    const healthFill = document.getElementById("healthFill");
+    healthFill.style.width = (health / maxHealth) * 100 + '%'; // Update health bar
+
+    if (health <= 0) {
+        document.getElementById("message").innerText = "Game Over! You have no health left.";
+        disableButtons();
     }
 
-    function updateStats() {
-        document.getElementById("health").innerText = health;
-        document.getElementById("currency").innerText = currency;
-        document.getElementById("attack").innerText = calculateAttackStrength();
-        document.getElementById("experience").innerText = experience;
-        document.getElementById("level").innerText = level;
-
-        const healthFill = document.getElementById("healthFill");
-        healthFill.style.width = (health / maxHealth) * 100 + '%';
-        document.getElementById("maxHealth").innerText = maxHealth;
-
-        if (health <= 0) {
-            document.getElementById("message").innerText = "Game Over! You have no health left.";
-            disableButtons();
-        }
-
-        updateInventory();
-    }
+    updateInventory(); // Inventory updates
+}
 
     function updateInventory() {
         const inventoryList = document.getElementById("inventory-list");
@@ -357,4 +357,4 @@
 </script>
 
 </body>
-</html>  
+</html>
