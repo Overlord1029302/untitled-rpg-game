@@ -72,11 +72,11 @@
             text-align: left;
         }
         .rainbow {
-    background: linear-gradient(90deg, red, orange, yellow, green, blue, indigo, violet);
-    background-clip: text;
-    -webkit-background-clip: text; /* For Safari */
-    color: transparent;
-}
+            background: linear-gradient(90deg, red, orange, yellow, green, blue, indigo, violet);
+            background-clip: text; 
+            -webkit-background-clip: text; /* For Safari */
+            color: transparent;
+        }
     </style>
 </head>
 <body>
@@ -126,6 +126,7 @@
     let level = 1;
     let experience = 0;
     let currentEnemy = null;
+    let isEnemyDefeated = false; // New variable to track if the enemy is defeated
     let inventory = [];
     let purchasedItems = new Set();
 
@@ -152,6 +153,7 @@
     function startNewBattle() {
         currentEnemy = isBossLevel() ? getBoss() : getRandomEnemy();
         document.getElementById("message").innerText = `A wild ${currentEnemy.name} appears! Prepare to fight!`;
+        isEnemyDefeated = false; // Reset defeat state for new battle
         updateStats();
     }
 
@@ -181,21 +183,30 @@
 
     function attackMonster() {
         if (health > 0 && currentEnemy !== null) {
+            if (isEnemyDefeated) {
+                // Start a new battle instead of doing nothing
+                startNewBattle();
+                return;
+            }
+
             const damageDealt = calculateAttackStrength();
             currentEnemy.health -= damageDealt;
-            document.getElementById("message").innerText = `You dealt ${damageDealt} damage to the ${currentEnemy.name}. It has ${currentEnemy.health} health left.`;
+
+            // Check if enemy is defeated
             if (currentEnemy.health <= 0) {
                 currency += 10;
                 experience += isBossLevel() ? 100 : 50;
-                document.getElementById("message").innerText += ` You defeated the ${currentEnemy.name}! You earned ${isBossLevel() ? 100 : 10} coins and ${isBossLevel() ? 100 : 50} XP!`;
-                currentEnemy = null;
-                checkLevelUp();
-                startNewBattle();
+
+                // Set enemy defeated message
+                document.getElementById("message").innerText = `You defeated the ${currentEnemy.name}! You earned ${isBossLevel() ? 100 : 10} coins and ${isBossLevel() ? 100 : 50} XP!`;
+                isEnemyDefeated = true; // Mark that the enemy is defeated
+
+                checkLevelUp(); // Check for level-up
+
             } else {
+                document.getElementById("message").innerText = `You dealt ${damageDealt} damage to the ${currentEnemy.name}. It has ${currentEnemy.health} health left.`; 
                 enemyAttack();
             }
-        } else {
-            document.getElementById("message").innerText = "You are dead! Heal to regain health.";
         }
     }
 
@@ -203,8 +214,24 @@
         if (currentEnemy && health > 0) {
             const enemyAttackStrength = currentEnemy.attack || (currentEnemy.baseAttack + (level * 2));
             health -= enemyAttackStrength;
-            document.getElementById("message").innerText += ` The ${currentEnemy.name} attacks you for ${enemyAttackStrength} damage!`;
-            updateStats();
+            updateHealthStatus();
+            if (health > 0) {
+                document.getElementById("message").innerText += ` The ${currentEnemy.name} attacks you for ${enemyAttackStrength} damage!`;
+            }
+        }
+    }
+
+    function updateHealthStatus() {
+        // Update the health display and check for game over
+        const healthFill = document.getElementById("healthFill");
+        document.getElementById("health").innerText = health > 0 ? health : 0; // Show 0 instead of negative
+        document.getElementById("maxHealth").innerText = maxHealth;
+        healthFill.style.width = (health > 0 ? (health / maxHealth) * 100 : 0) + '%'; // Avoid negative values in the health bar
+
+        // If health drops to 0 or below, disable the buttons and show game over message
+        if (health <= 0) {
+            document.getElementById("message").innerText = "You have been defeated! Game Over.";
+            disableButtons();
         }
     }
 
@@ -213,7 +240,7 @@
             health += 20;
             if (health > maxHealth) health = maxHealth;
             document.getElementById("message").innerText = `You healed 20 health points. Your health is now ${health}/${maxHealth}.`;
-            updateStats();
+            updateHealthStatus();
         } else {
             document.getElementById("message").innerText = "Your health is already full!";
         }
@@ -278,8 +305,8 @@
             document.getElementById("message").innerText = "You stumbled into a trap! You lost 10 health.";
             health -= 10;
             if (health < 0) health = 0;
+            updateHealthStatus();
         }
-        updateStats();
     }
 
     function castSpell() {
@@ -293,9 +320,10 @@
                     currency += 10;
                     experience += 100; // Always 100 XP for spells
                     document.getElementById("message").innerText += ` You defeated the ${currentEnemy.name}! You earned 10 coins and 100 XP!`;
-                    currentEnemy = null;
+                    isEnemyDefeated = true; // Mark that the enemy is defeated
+
                     checkLevelUp();
-                    startNewBattle();
+
                 } else {
                     enemyAttack();
                 }
@@ -308,35 +336,32 @@
     }
 
     function checkLevelUp() {
-    if (experience >= 100) {
-        level += 1;
-        baseAttackStrength += 5; // Level up increases base attack strength
-        maxHealth += 10; // Increase max health with level up
-        health = maxHealth; // Restore health to max upon leveling up
-        experience = experience - 100; // Reset experience for next level
-        document.getElementById("message").innerText += ` You leveled up to level ${level}! Your attack strength has increased and your max health is now ${maxHealth}.`;
-    }
-    updateStats(); // Ensure this is called to update displayed stats including max health.
-}
-
-function updateStats() {
-    document.getElementById("health").innerText = health; // Current health
-    document.getElementById("maxHealth").innerText = maxHealth; // Display correct max health here.
-    document.getElementById("currency").innerText = currency;
-    document.getElementById("attack").innerText = calculateAttackStrength();
-    document.getElementById("experience").innerText = experience;
-    document.getElementById("level").innerText = level;
-
-    const healthFill = document.getElementById("healthFill");
-    healthFill.style.width = (health / maxHealth) * 100 + '%'; // Update health bar
-
-    if (health <= 0) {
-        document.getElementById("message").innerText = "Game Over! You have no health left.";
-        disableButtons();
+        if (experience >= 100) {
+            level += 1;
+            baseAttackStrength += 5; // Level up increases base attack strength
+            maxHealth += 10; // Increase max health with level up
+            health = maxHealth; // Restore health to max upon leveling up
+            experience -= 100; // Reset experience for next level
+            document.getElementById("message").innerText += ` You leveled up to level ${level}! Your attack strength has increased and your max health is now ${maxHealth}.`;
+        }
+        updateHealthStatus(); // Ensure this is called to update displayed stats including max health.
     }
 
-    updateInventory(); // Inventory updates
-}
+    function updateStats() {
+        // Update currency, attack, experience, and level
+        document.getElementById("currency").innerText = currency;
+        document.getElementById("attack").innerText = baseAttackStrength + (level * 2); // Show correct attack value
+        document.getElementById("experience").innerText = experience;
+        document.getElementById("level").innerText = level;
+
+        // Handle game over condition
+        if (health <= 0) {
+            document.getElementById("message").innerText = "You have been defeated! Game Over.";
+            disableButtons();
+        }
+
+        updateInventory(); // Update the inventory display
+    }
 
     function updateInventory() {
         const inventoryList = document.getElementById("inventory-list");
